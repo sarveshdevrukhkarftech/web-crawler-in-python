@@ -1,0 +1,7 @@
+.vscode/
+
+# Ignoring All HTML files.
+*.html
+
+# Ignoring Environment files.
+project02-env
