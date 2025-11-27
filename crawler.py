@@ -3,11 +3,12 @@ from bs4 import BeautifulSoup
 
 URL = "https://www.bbc.com"
 
+
 def fetch_page(url):
     try:
         response = requests.get(url, timeout=5)
         response.raise_for_status()
-        print("Step 1 - Fetching Successful!")
+        print("Step 1 - Fetching Data Successful!")
         return response
     except requests.exceptions.Timeout:
         print("Request timed out")
@@ -49,7 +50,7 @@ frontier = ["https://www.bbc.com"]
 visited = {}
 
 while len(frontier) > 0:
-    current_url = frontier.pop()  # Removing URL from the Frontier List and
+    current_url = frontier.pop()  # Removing URL from the Frontier List (DFS)
     if current_url in visited:
         continue
     res = fetch_page(current_url)
@@ -58,9 +59,3 @@ while len(frontier) > 0:
     frontier.extend(next_urls)
     visited[current_url] = ""  # REMOVE this line.
     # visited.add(current_url)
-
-"""Main Code Execution for now."""
-# res = fetch_page(URL)
-# parsed_data = parse_page(res)
-# next_urls = parse_next_urls(parsed_data)
-# frontier.extend(next_urls)
