@@ -18,13 +18,46 @@ def fetch_page(url):
 def parse_page(res):
     # Creating soup to extract data.
     parsed_data = BeautifulSoup(res.text, "html.parser")  # Parsing Soup Data
-    print("Step 2 - Parsing Data Successful!")
-    return parsed_data
-
-
-def parse_next_urls(parsed_data):
-    next_urls = []
     all_link_tags = parsed_data.find_all("a")  # Getting all <a> tags.
+
+    # ----------
+    title_tag = parsed_data.find("meta", property="og:title")
+    if title_tag:
+        og_title = title_tag.get("content")
+    else:
+        og_title = "not found"
+
+    description_tag = parsed_data.find("meta", property="og:description")
+    if description_tag:
+        og_description = description_tag.get("content")
+    else:
+        og_description = "not found"
+
+    image_tag = parsed_data.find("meta", property="og:image")
+    if image_tag:
+        og_image = image_tag.get("content")
+    else:
+        og_image = "not found"
+
+    image_alt_tag = parsed_data.find("meta", property="og:image:alt")
+    if image_alt_tag:
+        og_image_alt = image_alt_tag.get("content")
+    else:
+        og_image_alt = "not found"
+
+    print("OG Title:", og_title)
+    print("OG Description:", og_description)
+    print("OG Image URL:", og_image)
+    print("OG Image Alt Text:", og_image_alt)
+    print("---------------------------------------------------")
+    # ----------
+
+    print("Step 2 - Parsing Data Successful!")
+    return all_link_tags
+
+
+def parse_next_urls(all_link_tags):
+    next_urls = []
 
     # Looping over tags to get 'href'
     for tag in all_link_tags:
@@ -49,7 +82,7 @@ def parse_next_urls(parsed_data):
             continue
 
         # Absolute BBC links
-        if link.startswith("https://www.bbc.com"):
+        if link.startswith("https://www.bbc.com/news/"):
             next_urls.append(link)
 
         # Internal links
