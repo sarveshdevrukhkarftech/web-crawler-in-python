@@ -1,18 +1,31 @@
 import requests
 from bs4 import BeautifulSoup
 import json
+import re
+import sys
+
+""" Utility """
 
 URL = "https://www.bbc.com"
+
+
+# Function to save visited links into the JSON file.
+def save_og_data(og_data):
+    for data in og_data:
+        with open("og_data.json", "w") as file:
+            json.dump(og_data, file, indent=4)
 
 
 def fetch_page(url):
     try:
         response = requests.get(url, timeout=5)
-        print("===== Start =====")
-        print("Step 1 - Fetching Data Successful!")
-        return response
+        if response.status_code == 200:
+            print("===== Start =====")
+            print("Step 1 - Fetching Data Successful!")
+            return response
     except Exception as error:
         print(f"An Error Occurred: {error}")
+        sys.exit()
 
 
 def parse_page(res):
@@ -20,40 +33,21 @@ def parse_page(res):
     parsed_data = BeautifulSoup(res.text, "html.parser")  # Parsing Soup Data
     all_link_tags = parsed_data.find_all("a")  # Getting all <a> tags.
 
-    # ----------
-    title_tag = parsed_data.find("meta", property="og:title")
-    if title_tag:
-        og_title = title_tag.get("content")
-    else:
-        og_title = "not found"
+    # Function to get meta data.
+    def get_og(tag_name):
+        tag = parsed_data.find("meta", property=tag_name)
+        return tag.get("content") if tag else "not found"
 
-    description_tag = parsed_data.find("meta", property="og:description")
-    if description_tag:
-        og_description = description_tag.get("content")
-    else:
-        og_description = "not found"
-
-    image_tag = parsed_data.find("meta", property="og:image")
-    if image_tag:
-        og_image = image_tag.get("content")
-    else:
-        og_image = "not found"
-
-    image_alt_tag = parsed_data.find("meta", property="og:image:alt")
-    if image_alt_tag:
-        og_image_alt = image_alt_tag.get("content")
-    else:
-        og_image_alt = "not found"
-
-    print("OG Title:", og_title)
-    print("OG Description:", og_description)
-    print("OG Image URL:", og_image)
-    print("OG Image Alt Text:", og_image_alt)
-    print("---------------------------------------------------")
-    # ----------
+    # Storing OG data in dictionary.
+    og_data = {
+        "title": get_og("og:title"),
+        "description": get_og("og:description"),
+        "image_url": get_og("og:image"),
+        "image_url_alt": get_og("og:image:alt"),
+    }
 
     print("Step 2 - Parsing Data Successful!")
-    return all_link_tags
+    return all_link_tags, og_data
 
 
 def parse_next_urls(all_link_tags):
@@ -81,13 +75,12 @@ def parse_next_urls(all_link_tags):
         if any(bad in link for bad in avoid_list):
             continue
 
-        # Absolute BBC links
-        if link.startswith("https://www.bbc.com/news/"):
-            next_urls.append(link)
-
-        # Internal links
-        elif link.startswith("/"):
-            next_urls.append(URL + link)
+        # Find only 'article' URL.
+        if re.search("articles", link):
+            if link.startswith("/"):
+                next_urls.append(URL + link)
+            else:
+                next_urls.append(link)
 
     print("Step 3 - Parsing Next URLs Data Successful!")
     print("===== End =====\n\n")
@@ -100,8 +93,11 @@ def save_visited(visited):
         json.dump(list(visited), file, indent=4)
 
 
+""" Main Code Execution """
 frontier = ["https://www.bbc.com/news"]
 visited = set()
+results = list()
+
 MAX_PAGES = 500  # Setting limits to visit pages.
 
 while len(frontier) > 0:
@@ -112,21 +108,23 @@ while len(frontier) > 0:
 
     current_url = frontier.pop(0)
 
-    # Crawl only particular pages.
-    if not current_url.startswith("https://www.bbc.com/news"):
-        continue
-
     if current_url in visited:
         continue
     visited.add(current_url)
     save_visited(visited)
 
-    res = fetch_page(current_url)
-    if not res:
-        continue
+    res = fetch_page(current_url)  # Step-1
 
-    parsed_data = parse_page(res)
-    next_urls = parse_next_urls(parsed_data)
+    # If result not found, stop the crawler.
+    if not res:
+        sys.exit()
+
+    parsed_data, og_data = parse_page(res)  # Step-2
+
+    results.append(og_data)
+    save_og_data(results)
+
+    next_urls = parse_next_urls(parsed_data)  # Step-3
 
     # Add only URLs that are not visited
     for url in next_urls:
